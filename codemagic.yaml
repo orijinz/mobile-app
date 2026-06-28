@@ -5,6 +5,7 @@ workflows:
     instance_type: mac_mini_m2
     environment:
       node: latest
+      java: 21
       groups:
         # Define this group in Codemagic UI: Teams > Personal Account > Environment variables.
         # Needed only once you set up Play Console signing/publishing.
