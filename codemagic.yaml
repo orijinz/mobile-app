@@ -70,8 +70,12 @@ workflows:
       email:
         recipients:
           - bradchase@live.com
-      # Uncomment once comfortable automating TestFlight uploads (Phase 1 plan
-      # recommends starting with manual upload for the first few builds):
-      # app_store_connect:
-      #   auth: integration
-      #   submit_to_testflight: true
+      app_store_connect:
+        api_key: $APP_STORE_CONNECT_PRIVATE_KEY
+        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
+        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
+        # submit_to_testflight only matters for EXTERNAL testers (triggers Apple's
+        # Beta App Review queue). As Account Holder you're an internal tester
+        # automatically once the build uploads -- no review wait needed for that.
+        # Flip to true later if/when external testers are added.
+        submit_to_testflight: false
