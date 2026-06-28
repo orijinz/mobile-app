@@ -42,9 +42,6 @@ workflows:
         #   APP_STORE_CONNECT_ISSUER_ID, APP_STORE_CONNECT_KEY_IDENTIFIER,
         #   APP_STORE_CONNECT_PRIVATE_KEY  (generate in App Store Connect > Users and Access > Keys)
         - orijinz_ios
-      ios_signing:
-        distribution_type: app_store
-        bundle_identifier: com.convertify.entspire2
     scripts:
       - name: Install dependencies
         script: npm ci
@@ -54,9 +51,17 @@ workflows:
         script: |
           cd ios/App
           pod install
-      - name: Set up code signing (automatic, via App Store Connect API key)
+      - name: Initialize keychain
+        script: keychain initialize
+      - name: Fetch signing files (create if missing)
         script: |
-          xcode-project use-profiles
+          app-store-connect fetch-signing-files com.convertify.entspire2 \
+            --type IOS_APP_STORE \
+            --create
+      - name: Add certificates to keychain
+        script: keychain add-certificates
+      - name: Set up code signing settings on Xcode project
+        script: xcode-project use-profiles
       - name: Build .ipa
         script: |
           xcode-project build-ipa --workspace "ios/App/App.xcworkspace" --scheme "App"
