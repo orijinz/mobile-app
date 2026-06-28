@@ -40,6 +40,10 @@ workflows:
         # Needed for App Store Connect API key (codesigning + optional TestFlight upload):
         #   APP_STORE_CONNECT_ISSUER_ID, APP_STORE_CONNECT_KEY_IDENTIFIER,
         #   APP_STORE_CONNECT_PRIVATE_KEY  (generate in App Store Connect > Users and Access > Keys)
+        #   CERTIFICATE_PRIVATE_KEY  (a fresh 2048-bit RSA key in traditional/PKCS1 PEM
+        #   format, BEGIN RSA PRIVATE KEY header — used to mint a brand-new Distribution
+        #   certificate via --create, since fetch-signing-files can't reuse an existing
+        #   cert it doesn't hold the private key for)
         - orijinz_ios
     scripts:
       - name: Install dependencies
