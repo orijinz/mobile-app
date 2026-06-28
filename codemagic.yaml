@@ -44,7 +44,7 @@ workflows:
         - orijinz_ios
       ios_signing:
         distribution_type: app_store
-        bundle_identifier: com.orijinz.daily
+        bundle_identifier: com.convertify.entspire2
     scripts:
       - name: Install dependencies
         script: npm ci
