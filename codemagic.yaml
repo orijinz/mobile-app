@@ -17,6 +17,7 @@ workflows:
       - name: Build Android APK/AAB
         script: |
           cd android
+          chmod +x ./gradlew
           ./gradlew bundleRelease
     artifacts:
       - android/app/build/outputs/**/*.aab
