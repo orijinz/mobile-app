@@ -1,8 +1,3 @@
-definitions:
-  shared_setup: &shared_setup
-    - npm ci
-    - npx cap sync
-
 workflows:
   android-build:
     name: Orijinz Daily - Android
@@ -15,7 +10,10 @@ workflows:
         # Needed only once you set up Play Console signing/publishing.
         - orijinz_android
     scripts:
-      - *shared_setup
+      - name: Install dependencies
+        script: npm ci
+      - name: Sync Capacitor
+        script: npx cap sync
       - name: Build Android APK/AAB
         script: |
           cd android
@@ -46,7 +44,10 @@ workflows:
         distribution_type: app_store
         bundle_identifier: com.orijinz.daily
     scripts:
-      - *shared_setup
+      - name: Install dependencies
+        script: npm ci
+      - name: Sync Capacitor
+        script: npx cap sync
       - name: Install CocoaPods dependencies
         script: |
           cd ios/App
