@@ -35,7 +35,6 @@ workflows:
     environment:
       node: latest
       xcode: latest
-      cocoapods: default
       groups:
         # Define this group in Codemagic UI: Teams > Personal Account > Environment variables.
         # Needed for App Store Connect API key (codesigning + optional TestFlight upload):
@@ -47,10 +46,6 @@ workflows:
         script: npm ci
       - name: Sync Capacitor
         script: npx cap sync
-      - name: Install CocoaPods dependencies
-        script: |
-          cd ios/App
-          pod install
       - name: Initialize keychain
         script: keychain initialize
       - name: Fetch signing files (create if missing)
