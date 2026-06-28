@@ -1,0 +1,20 @@
+{
+  "name": "orijinz-daily-app",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Capacitor app shell for Orijinz Daily (entspire.com) — replaces the third-party app wrapper.",
+  "scripts": {
+    "sync": "cap sync",
+    "open:ios": "cap open ios",
+    "open:android": "cap open android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.4.1",
+    "@capacitor/core": "^8.4.1",
+    "@capacitor/ios": "^8.4.1"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.4.1",
+    "typescript": "^5.5.4"
+  }
+}

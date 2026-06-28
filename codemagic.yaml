@@ -1,0 +1,70 @@
+definitions:
+  shared_setup: &shared_setup
+    - npm ci
+    - npx cap sync
+
+workflows:
+  android-build:
+    name: Orijinz Daily - Android
+    max_build_duration: 30
+    instance_type: linux_x2
+    environment:
+      node: latest
+      groups:
+        # Define this group in Codemagic UI: Teams > Personal Account > Environment variables.
+        # Needed only once you set up Play Console signing/publishing.
+        - orijinz_android
+    scripts:
+      - *shared_setup
+      - name: Build Android APK/AAB
+        script: |
+          cd android
+          ./gradlew bundleRelease
+    artifacts:
+      - android/app/build/outputs/**/*.aab
+      - android/app/build/outputs/**/*.apk
+    publishing:
+      email:
+        recipients:
+          - bradchase@live.com
+
+  ios-build:
+    name: Orijinz Daily - iOS
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    environment:
+      node: latest
+      xcode: latest
+      cocoapods: default
+      groups:
+        # Define this group in Codemagic UI: Teams > Personal Account > Environment variables.
+        # Needed for App Store Connect API key (codesigning + optional TestFlight upload):
+        #   APP_STORE_CONNECT_ISSUER_ID, APP_STORE_CONNECT_KEY_IDENTIFIER,
+        #   APP_STORE_CONNECT_PRIVATE_KEY  (generate in App Store Connect > Users and Access > Keys)
+        - orijinz_ios
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.orijinz.daily
+    scripts:
+      - *shared_setup
+      - name: Install CocoaPods dependencies
+        script: |
+          cd ios/App
+          pod install
+      - name: Set up code signing (automatic, via App Store Connect API key)
+        script: |
+          xcode-project use-profiles
+      - name: Build .ipa
+        script: |
+          xcode-project build-ipa --workspace "ios/App/App.xcworkspace" --scheme "App"
+    artifacts:
+      - build/ios/ipa/*.ipa
+    publishing:
+      email:
+        recipients:
+          - bradchase@live.com
+      # Uncomment once comfortable automating TestFlight uploads (Phase 1 plan
+      # recommends starting with manual upload for the first few builds):
+      # app_store_connect:
+      #   auth: integration
+      #   submit_to_testflight: true
