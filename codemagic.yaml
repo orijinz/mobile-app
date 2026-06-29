@@ -3,6 +3,13 @@ workflows:
     name: Orijinz Daily - Android
     max_build_duration: 30
     instance_type: mac_mini_m2
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: main
+          include: true
+          source: true
     environment:
       node: latest
       java: 21
@@ -32,6 +39,13 @@ workflows:
     name: Orijinz Daily - iOS
     max_build_duration: 60
     instance_type: mac_mini_m2
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: main
+          include: true
+          source: true
     environment:
       node: latest
       xcode: latest
