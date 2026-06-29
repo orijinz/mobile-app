@@ -58,6 +58,12 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             return
         }
 
+        // Synchronous info first -- doesn't depend on JS evaluation
+        // completing, so it shows even if the page's JS engine is stuck.
+        let syncInfo = "DIAG sync: url=\(webView.url?.absoluteString ?? "nil") "
+            + "isLoading=\(webView.isLoading) progress=\(webView.estimatedProgress)"
+        label.text = syncInfo
+
         let probe = """
         (function(){return JSON.stringify({
             url: location.href,
@@ -67,11 +73,13 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         });})()
         """
         webView.evaluateJavaScript(probe) { result, error in
+            let jsInfo: String
             if let error = error {
-                label.text = "DIAG JS error: \(error.localizedDescription)"
+                jsInfo = "JS error: \(error.localizedDescription)"
             } else {
-                label.text = "DIAG: \((result as? String) ?? "no result")"
+                jsInfo = "JS: \((result as? String) ?? "no result")"
             }
+            label.text = syncInfo + "\n" + jsInfo
         }
     }
 

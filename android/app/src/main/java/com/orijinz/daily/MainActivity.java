@@ -41,8 +41,15 @@ public class MainActivity extends BridgeActivity {
             return;
         }
 
-        getBridge().getWebView().evaluateJavascript(DIAGNOSTIC_PROBE_JS, value ->
-            label.setText("DIAG: " + value)
+        android.webkit.WebView webView = getBridge().getWebView();
+        // Synchronous info first -- doesn't depend on JS evaluation
+        // completing, so it shows even if the page's JS engine is stuck.
+        String syncInfo = "DIAG sync: url=" + webView.getUrl()
+            + " progress=" + webView.getProgress();
+        label.setText(syncInfo);
+
+        webView.evaluateJavascript(DIAGNOSTIC_PROBE_JS, value ->
+            label.setText(syncInfo + "\nJS: " + value)
         );
     }
 }
