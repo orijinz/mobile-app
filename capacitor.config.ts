@@ -21,6 +21,20 @@ const config: CapacitorConfig = {
       'js.stripe.com',
     ],
   },
+  // The site occasionally stalled mid-load only inside the embedded
+  // WebView, never in regular Safari/Chrome. Capacitor's bridge exposes
+  // window.webkit.messageHandlers (iOS) to page JS, which real browsers
+  // never do -- some sites' browser-detection/bot-defense scripts branch
+  // differently when they see that. Presenting a normal mobile-browser
+  // user agent avoids that branch.
+  ios: {
+    overrideUserAgent:
+      'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1',
+  },
+  android: {
+    overrideUserAgent:
+      'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36',
+  },
 };
 
 export default config;

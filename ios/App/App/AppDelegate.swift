@@ -1,13 +1,10 @@
 import UIKit
 import Capacitor
-import WebKit
 
 @UIApplicationMain
-class AppDelegate: UIResponder, UIApplicationDelegate, WKScriptMessageHandler {
+class AppDelegate: UIResponder, UIApplicationDelegate {
 
     var window: UIWindow?
-    private var diagLogView: UITextView?
-    private var diagLogLines: [String] = []
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         // Override point for customization after application launch.
@@ -28,95 +25,34 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKScriptMessageHandler {
         // Called as part of the transition from the background to the active state; here you can undo many of the changes made on entering the background.
     }
 
-    private var didSetUpDiagnostics = false
+    private var didStartStallWatchdog = false
+    private var reloadAttempts = 0
 
     func applicationDidBecomeActive(_ application: UIApplication) {
         // Restart any tasks that were paused (or not yet started) while the application was inactive. If the application was previously in the background, optionally refresh the user interface.
-        guard !didSetUpDiagnostics else { return }
-        didSetUpDiagnostics = true
-        setUpDiagnosticOverlay()
+        guard !didStartStallWatchdog else { return }
+        didStartStallWatchdog = true
+        scheduleStallCheck()
     }
 
-    // TEMPORARY: diagnose the entspire.com blank-screen issue. A one-shot
-    // probe after a delay couldn't see anything once the page's JS hung --
-    // the query just queues forever behind whatever's stuck, same as
-    // everything else. Instead, inject a script at document-start that logs
-    // fetches/errors/heartbeats out to native *as they happen*, before any
-    // freeze, then reload so the instrumented script is active for this
-    // load. Draws straight onto the window (not a dialog) so it can't be
-    // silently swallowed by presentation timing. Remove once resolved.
-    private func setUpDiagnosticOverlay() {
-        guard let window = window else { return }
-
-        let textView = UITextView(frame: CGRect(x: 8, y: 50, width: window.bounds.width - 16, height: window.bounds.height - 100))
-        textView.isEditable = false
-        textView.font = .systemFont(ofSize: 11)
-        textView.textColor = .white
-        textView.backgroundColor = UIColor.black.withAlphaComponent(0.85)
-        textView.text = "DIAG: setting up..."
-        window.addSubview(textView)
-        diagLogView = textView
-
-        guard let bridgeVC = window.rootViewController as? CAPBridgeViewController,
-              let webView = bridgeVC.webView else {
-            textView.text = "DIAG: no CAPBridgeViewController/webView found"
-            return
+    // The page occasionally stalls mid-load only inside the embedded
+    // WebView, never in regular Safari. Root cause wasn't pinned down after
+    // extensive on-device diagnosis. Reload automatically if the page
+    // hasn't finished loading after 10s, capped at 2 retries, so a stall
+    // self-recovers instead of leaving a permanent blank screen.
+    private func scheduleStallCheck() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 10) { [weak self] in
+            self?.checkForStall()
         }
+    }
 
-        let script = """
-        (function() {
-            function log(msg) {
-                try { window.webkit.messageHandlers.diagLog.postMessage(String(msg)); } catch (e) {}
-            }
-            window.addEventListener('error', function(e) {
-                log('ERROR: ' + e.message + ' @ ' + e.filename + ':' + e.lineno);
-            });
-            window.addEventListener('unhandledrejection', function(e) {
-                var reason = e.reason && e.reason.message ? e.reason.message : e.reason;
-                log('UNHANDLED REJECTION: ' + reason);
-            });
-            var origFetch = window.fetch;
-            if (origFetch) {
-                window.fetch = function(input) {
-                    var u = (typeof input === 'string') ? input : (input && input.url) || 'unknown';
-                    log('FETCH START: ' + u);
-                    return origFetch.apply(this, arguments).then(function(r) {
-                        log('FETCH DONE (' + r.status + '): ' + u);
-                        return r;
-                    }).catch(function(err) {
-                        log('FETCH FAIL: ' + u + ' - ' + err);
-                        throw err;
-                    });
-                };
-            }
-            var start = Date.now();
-            setInterval(function() {
-                log('heartbeat t=' + (Date.now() - start) + 'ms readyState=' + document.readyState);
-            }, 1000);
-            log('instrumentation installed');
-        })();
-        """
-        let userScript = WKUserScript(source: script, injectionTime: .atDocumentStart, forMainFrameOnly: true)
-        webView.configuration.userContentController.addUserScript(userScript)
-        webView.configuration.userContentController.add(self, name: "diagLog")
-
-        appendDiagLog("DIAG: instrumentation installed, reloading...")
+    private func checkForStall() {
+        guard let bridgeVC = window?.rootViewController as? CAPBridgeViewController,
+              let webView = bridgeVC.webView else { return }
+        guard webView.isLoading, reloadAttempts < 2 else { return }
+        reloadAttempts += 1
         webView.reload()
-    }
-
-    private func appendDiagLog(_ line: String) {
-        diagLogLines.append(line)
-        if diagLogLines.count > 40 {
-            diagLogLines.removeFirst(diagLogLines.count - 40)
-        }
-        diagLogView?.text = diagLogLines.joined(separator: "\n")
-        if let textView = diagLogView {
-            textView.scrollRangeToVisible(NSRange(location: textView.text.count, length: 0))
-        }
-    }
-
-    func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
-        appendDiagLog("\(message.body)")
+        scheduleStallCheck()
     }
 
     func applicationWillTerminate(_ application: UIApplication) {
