@@ -25,8 +25,54 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // Called as part of the transition from the background to the active state; here you can undo many of the changes made on entering the background.
     }
 
+    private var didShowDiagnosticOverlay = false
+
     func applicationDidBecomeActive(_ application: UIApplication) {
         // Restart any tasks that were paused (or not yet started) while the application was inactive. If the application was previously in the background, optionally refresh the user interface.
+        guard !didShowDiagnosticOverlay else { return }
+        didShowDiagnosticOverlay = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5) { [weak self] in
+            self?.showDiagnosticOverlay()
+        }
+    }
+
+    // TEMPORARY: diagnose the entspire.com blank-screen issue. Draws straight
+    // onto the window instead of presenting an alert, so it can't be
+    // silently swallowed by view-controller presentation timing, and reports
+    // even if the WebView reference itself is unexpectedly missing. Remove
+    // once resolved.
+    private func showDiagnosticOverlay() {
+        guard let window = window else { return }
+
+        let label = UILabel(frame: CGRect(x: 8, y: 50, width: window.bounds.width - 16, height: 300))
+        label.numberOfLines = 0
+        label.font = .systemFont(ofSize: 12)
+        label.textColor = .white
+        label.backgroundColor = UIColor.black.withAlphaComponent(0.85)
+        label.text = "DIAG: starting..."
+        window.addSubview(label)
+
+        guard let bridgeVC = window.rootViewController as? CAPBridgeViewController,
+              let webView = bridgeVC.webView else {
+            label.text = "DIAG: no CAPBridgeViewController/webView found"
+            return
+        }
+
+        let probe = """
+        (function(){return JSON.stringify({
+            url: location.href,
+            title: document.title,
+            htmlLen: document.documentElement.outerHTML.length,
+            readyState: document.readyState
+        });})()
+        """
+        webView.evaluateJavaScript(probe) { result, error in
+            if let error = error {
+                label.text = "DIAG JS error: \(error.localizedDescription)"
+            } else {
+                label.text = "DIAG: \((result as? String) ?? "no result")"
+            }
+        }
     }
 
     func applicationWillTerminate(_ application: UIApplication) {
