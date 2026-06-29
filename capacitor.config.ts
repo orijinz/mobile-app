@@ -13,10 +13,7 @@ const config: CapacitorConfig = {
   appName: 'Orijinz Daily',
   webDir: 'www',
   server: {
-    // TEMPORARY diagnostic: blank-screen test build, isolating whether ANY
-    // remote URL renders before suspecting something entspire.com-specific.
-    // Revert to entspire.com once resolved.
-    url: 'https://example.com',
+    url: 'https://www.entspire.com',
     allowNavigation: [
       'entspire.com',
       '*.entspire.com',
