@@ -14,12 +14,23 @@ public class MainActivity extends BridgeActivity {
     // text overlay directly on screen (not a dialog, so it can't be silently
     // swallowed by presentation timing) showing the page's own JS-reported
     // state. Remove once resolved.
-    private static final String DIAGNOSTIC_PROBE_JS = "(function(){return JSON.stringify({"
+    private static final String DIAGNOSTIC_PROBE_JS = "(function(){"
+        + "var resources = performance.getEntriesByType('resource');"
+        + "var pending = resources.filter(function(r){ return r.responseEnd === 0; }).map(function(r){ return r.name; });"
+        + "var body = document.body;"
+        + "var style = body ? getComputedStyle(body) : null;"
+        + "return JSON.stringify({"
         + "url: location.href,"
         + "title: document.title,"
         + "htmlLen: document.documentElement.outerHTML.length,"
-        + "readyState: document.readyState"
-        + "});})()";
+        + "readyState: document.readyState,"
+        + "bodyDisplay: style ? style.display : 'no body',"
+        + "bodyVisibility: style ? style.visibility : 'no body',"
+        + "bodyOpacity: style ? style.opacity : 'no body',"
+        + "totalResources: resources.length,"
+        + "pendingResources: pending.slice(0, 8)"
+        + "});"
+        + "})()";
 
     @Override
     public void onCreate(Bundle savedInstanceState) {

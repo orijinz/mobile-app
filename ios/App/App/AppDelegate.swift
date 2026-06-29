@@ -44,7 +44,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     private func showDiagnosticOverlay() {
         guard let window = window else { return }
 
-        let label = UILabel(frame: CGRect(x: 8, y: 50, width: window.bounds.width - 16, height: 300))
+        let label = UILabel(frame: CGRect(x: 8, y: 50, width: window.bounds.width - 16, height: window.bounds.height - 100))
         label.numberOfLines = 0
         label.font = .systemFont(ofSize: 12)
         label.textColor = .white
@@ -65,12 +65,23 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         label.text = syncInfo
 
         let probe = """
-        (function(){return JSON.stringify({
-            url: location.href,
-            title: document.title,
-            htmlLen: document.documentElement.outerHTML.length,
-            readyState: document.readyState
-        });})()
+        (function(){
+            var resources = performance.getEntriesByType('resource');
+            var pending = resources.filter(function(r){ return r.responseEnd === 0; }).map(function(r){ return r.name; });
+            var body = document.body;
+            var style = body ? getComputedStyle(body) : null;
+            return JSON.stringify({
+                url: location.href,
+                title: document.title,
+                htmlLen: document.documentElement.outerHTML.length,
+                readyState: document.readyState,
+                bodyDisplay: style ? style.display : 'no body',
+                bodyVisibility: style ? style.visibility : 'no body',
+                bodyOpacity: style ? style.opacity : 'no body',
+                totalResources: resources.length,
+                pendingResources: pending.slice(0, 8)
+            });
+        })()
         """
         webView.evaluateJavaScript(probe) { result, error in
             let jsInfo: String
