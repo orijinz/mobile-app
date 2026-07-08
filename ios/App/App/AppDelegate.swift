@@ -1,75 +1,124 @@
+// LAST UPDATED: 2026-07-08 07:42
 import UIKit
-import Capacitor
+import WebKit
 
 @UIApplicationMain
-class AppDelegate: UIResponder, UIApplicationDelegate {
+class AppDelegate: UIResponder, UIApplicationDelegate, WKNavigationDelegate {
 
     var window: UIWindow?
+    private var webView: WKWebView!
+    private var reloadAttempts = 0
 
-    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Override point for customization after application launch.
+    private let siteURL = URL(string: "https://www.entspire.com")!
+
+    // Matches a real iPhone Safari UA so Wix/Cloudflare don't fingerprint the WebView.
+    private let mobileUA = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1"
+
+    func application(_ application: UIApplication,
+                     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+        let config = WKWebViewConfiguration()
+        config.allowsInlineMediaPlayback = true
+        config.mediaTypesRequiringUserActionForPlayback = []
+
+        webView = WKWebView(frame: .zero, configuration: config)
+        webView.customUserAgent = mobileUA
+        webView.navigationDelegate = self
+        webView.allowsBackForwardNavigationGestures = true
+
+        let vc = UIViewController()
+        vc.view.backgroundColor = .white
+        webView.translatesAutoresizingMaskIntoConstraints = false
+        vc.view.addSubview(webView)
+        NSLayoutConstraint.activate([
+            webView.topAnchor.constraint(equalTo: vc.view.topAnchor),
+            webView.bottomAnchor.constraint(equalTo: vc.view.bottomAnchor),
+            webView.leadingAnchor.constraint(equalTo: vc.view.leadingAnchor),
+            webView.trailingAnchor.constraint(equalTo: vc.view.trailingAnchor),
+        ])
+
+        window = UIWindow(frame: UIScreen.main.bounds)
+        window?.rootViewController = vc
+        window?.makeKeyAndVisible()
+
+        loadSite()
         return true
     }
 
-    func applicationWillResignActive(_ application: UIApplication) {
-        // Sent when the application is about to move from active to inactive state. This can occur for certain types of temporary interruptions (such as an incoming phone call or SMS message) or when the user quits the application and it begins the transition to the background state.
-        // Use this method to pause ongoing tasks, disable timers, and invalidate graphics rendering callbacks. Games should use this method to pause the game.
-    }
-
-    func applicationDidEnterBackground(_ application: UIApplication) {
-        // Use this method to release shared resources, save user data, invalidate timers, and store enough application state information to restore your application to its current state in case it is terminated later.
-        // If your application supports background execution, this method is called instead of applicationWillTerminate: when the user quits.
-    }
-
-    func applicationWillEnterForeground(_ application: UIApplication) {
-        // Called as part of the transition from the background to the active state; here you can undo many of the changes made on entering the background.
-    }
-
-    private var didStartStallWatchdog = false
-    private var reloadAttempts = 0
-
-    func applicationDidBecomeActive(_ application: UIApplication) {
-        // Restart any tasks that were paused (or not yet started) while the application was inactive. If the application was previously in the background, optionally refresh the user interface.
-        guard !didStartStallWatchdog else { return }
-        didStartStallWatchdog = true
+    private func loadSite() {
+        reloadAttempts = 0
+        webView.load(URLRequest(url: siteURL))
         scheduleStallCheck()
     }
 
-    // The page occasionally stalls mid-load only inside the embedded
-    // WebView, never in regular Safari. Root cause wasn't pinned down after
-    // extensive on-device diagnosis. Reload automatically if the page
-    // hasn't finished loading after 10s, capped at 2 retries, so a stall
-    // self-recovers instead of leaving a permanent blank screen.
     private func scheduleStallCheck() {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 10) { [weak self] in
+        DispatchQueue.main.asyncAfter(deadline: .now() + 12) { [weak self] in
             self?.checkForStall()
         }
     }
 
     private func checkForStall() {
-        guard let bridgeVC = window?.rootViewController as? CAPBridgeViewController,
-              let webView = bridgeVC.webView else { return }
-        guard webView.isLoading, reloadAttempts < 2 else { return }
+        guard reloadAttempts < 3 else { return }
+        if webView.isLoading {
+            reloadAttempts += 1
+            webView.reload()
+            scheduleStallCheck()
+        }
+    }
+
+    // MARK: - WKNavigationDelegate
+
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        reloadAttempts = 0
+    }
+
+    func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
+        guard reloadAttempts < 3 else { return }
         reloadAttempts += 1
-        webView.reload()
-        scheduleStallCheck()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
+            self?.webView.reload()
+        }
     }
 
-    func applicationWillTerminate(_ application: UIApplication) {
-        // Called when the application is about to terminate. Save data if appropriate. See also applicationDidEnterBackground:.
+    func webView(_ webView: WKWebView,
+                 decidePolicyFor navigationAction: WKNavigationAction,
+                 decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
+        guard let url = navigationAction.request.url else {
+            decisionHandler(.allow)
+            return
+        }
+        // Phase 2: orijinz:// scheme triggers native StoreKit IAP
+        if url.scheme == "orijinz" {
+            decisionHandler(.cancel)
+            return
+        }
+        // User-tapped links to unrelated domains open in Safari, not the WebView
+        if navigationAction.navigationType == .linkActivated,
+           let host = url.host,
+           !host.contains("entspire.com"),
+           !host.contains("wix.com"),
+           !host.contains("wixstatic.com"),
+           !host.contains("wixapps.net"),
+           !host.contains("parastorage.com"),
+           !host.contains("stripe.com") {
+            UIApplication.shared.open(url)
+            decisionHandler(.cancel)
+            return
+        }
+        decisionHandler(.allow)
     }
 
-    func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey: Any] = [:]) -> Bool {
-        // Called when the app was launched with a url. Feel free to add additional processing here,
-        // but if you want the App API to support tracking app url opens, make sure to keep this call
-        return ApplicationDelegateProxy.shared.application(app, open: url, options: options)
-    }
+    // MARK: - UIApplicationDelegate stubs
 
-    func application(_ application: UIApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([UIUserActivityRestoring]?) -> Void) -> Bool {
-        // Called when the app was launched with an activity, including Universal Links.
-        // Feel free to add additional processing here, but if you want the App API to support
-        // tracking app url opens, make sure to keep this call
-        return ApplicationDelegateProxy.shared.application(application, continue: userActivity, restorationHandler: restorationHandler)
-    }
+    func applicationWillResignActive(_ application: UIApplication) {}
+    func applicationDidEnterBackground(_ application: UIApplication) {}
+    func applicationWillEnterForeground(_ application: UIApplication) {}
+    func applicationDidBecomeActive(_ application: UIApplication) {}
+    func applicationWillTerminate(_ application: UIApplication) {}
 
+    func application(_ app: UIApplication, open url: URL,
+                     options: [UIApplication.OpenURLOptionsKey: Any] = [:]) -> Bool { true }
+
+    func application(_ application: UIApplication,
+                     continue userActivity: NSUserActivity,
+                     restorationHandler: @escaping ([UIUserActivityRestoring]?) -> Void) -> Bool { true }
 }
