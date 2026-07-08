@@ -137,7 +137,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKNavigationDelegate {
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         reloadAttempts = 0
         let active = iapActive ? "true" : "false"
-        js("window.ORIJINZ_NATIVE_IOS=true;window.ORIJINZ_IAP_ACTIVE=\(active);")
+        js("window.ORIJINZ_NATIVE_IOS=true;window.ORIJINZ_IAP_ACTIVE=\(active);window.postMessage({type:'nativeIOSReady',iapActive:\(active)},'*');")
     }
 
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
