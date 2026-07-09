@@ -1,4 +1,4 @@
-// LAST UPDATED: 2026-07-08 18:17
+// LAST UPDATED: 2026-07-09 08:14
 import UIKit
 import WebKit
 import StoreKit
@@ -19,7 +19,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKNavigationDelegate {
     private var reloadAttempts = 0
     private var iapActive = false
 
-    private let siteURL  = URL(string: "https://www.entspire.com")!
+    private let siteURL  = URL(string: "https://www.orijinz.com")!
     private let mobileUA = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1 OrijinzApp/1.0"
 
     func application(_ application: UIApplication,
@@ -159,14 +159,26 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKNavigationDelegate {
             return
         }
 
+        // Intercept subscribe requests and load iOS-specific page
+        if (url.path.contains("/subscribe") || url.path == "/subscribe"),
+           let host = url.host,
+           (host.contains("orijinz") || host.contains("entspire")) {
+            let iosSubscribeURL = URL(string: "https://orijinz.github.io/website/orijinz-subscribe-ios.html")!
+            webView.load(URLRequest(url: iosSubscribeURL))
+            decisionHandler(.cancel)
+            return
+        }
+
         if navigationAction.navigationType == .linkActivated,
            let host = url.host,
+           !host.contains("orijinz.com"),
            !host.contains("entspire.com"),
            !host.contains("wix.com"),
            !host.contains("wixstatic.com"),
            !host.contains("wixapps.net"),
            !host.contains("parastorage.com"),
-           !host.contains("stripe.com") {
+           !host.contains("stripe.com"),
+           !host.contains("github.com") {
             UIApplication.shared.open(url)
             decisionHandler(.cancel)
             return
