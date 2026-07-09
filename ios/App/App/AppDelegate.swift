@@ -1,4 +1,4 @@
-// LAST UPDATED: 2026-07-08 11:59
+// LAST UPDATED: 2026-07-08 18:17
 import UIKit
 import WebKit
 import StoreKit
@@ -20,7 +20,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKNavigationDelegate {
     private var iapActive = false
 
     private let siteURL  = URL(string: "https://www.entspire.com")!
-    private let mobileUA = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1"
+    private let mobileUA = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1 OrijinzApp/1.0"
 
     func application(_ application: UIApplication,
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
