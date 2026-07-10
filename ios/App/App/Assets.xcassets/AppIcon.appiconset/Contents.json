@@ -29,6 +29,24 @@
       "idiom": "iphone",
       "scale": "2x",
       "size": "60x60"
+    },
+    {
+      "filename": "AppIcon-152@2x.png",
+      "idiom": "ipad",
+      "scale": "2x",
+      "size": "76x76"
+    },
+    {
+      "filename": "AppIcon-76@1x.png",
+      "idiom": "ipad",
+      "scale": "1x",
+      "size": "76x76"
+    },
+    {
+      "filename": "AppIcon-167@2x.png",
+      "idiom": "ipad-pro",
+      "scale": "2x",
+      "size": "83.5x83.5"
     }
   ],
   "info": {
