@@ -44,9 +44,9 @@
     },
     {
       "filename": "AppIcon-167@2x.png",
-      "idiom": "ipad-pro",
-      "scale": "1x",
-      "size": "167x167"
+      "idiom": "ipad",
+      "scale": "2x",
+      "size": "83.5x83.5"
     }
   ],
   "info": {
