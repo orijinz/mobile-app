@@ -41,7 +41,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKNavigationDelegate {
         if #available(iOS 13.0, *) {
             config.websiteDataStore = WKWebsiteDataStore.default()
         }
-        config.httpShouldUsePipelining = true
 
         webView = WKWebView(frame: .zero, configuration: config)
         webView.customUserAgent = mobileUA
