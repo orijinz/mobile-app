@@ -1,4 +1,4 @@
-// LAST UPDATED: 2026-07-09 08:14
+// LAST UPDATED: 2026-07-13 10:53
 import UIKit
 import WebKit
 import StoreKit
@@ -36,6 +36,12 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKNavigationDelegate {
         let config = WKWebViewConfiguration()
         config.allowsInlineMediaPlayback = true
         config.mediaTypesRequiringUserActionForPlayback = []
+
+        // Enable third-party cookies for OAuth flows (Google Sign-In, etc.)
+        if #available(iOS 13.0, *) {
+            config.websiteDataStore = WKWebsiteDataStore.default()
+        }
+        config.httpShouldUsePipelining = true
 
         webView = WKWebView(frame: .zero, configuration: config)
         webView.customUserAgent = mobileUA
