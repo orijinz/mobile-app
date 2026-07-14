@@ -300,11 +300,27 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKNavigationDelegate, ASA
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         let body: [String: String] = ["email": email, "name": name]
         request.httpBody = try? JSONSerialization.data(withJSONObject: body)
-        URLSession.shared.dataTask(with: request) { _, response, error in
+        URLSession.shared.dataTask(with: request) { data, response, error in
             if let error = error {
                 print("Account creation error: \(error.localizedDescription)")
-            } else {
-                print("Account created successfully for \(email)")
+                return
+            }
+
+            guard let data = data else { return }
+            do {
+                if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                   let success = json["success"] as? Bool,
+                   success,
+                   let sessionToken = json["sessionToken"] as? String {
+                    // Store session token in sessionStorage so game pages can use it
+                    let script = "sessionStorage.setItem('wixSessionToken', '\(sessionToken)');"
+                    DispatchQueue.main.async { [weak self] in
+                        self?.webView.evaluateJavaScript(script, completionHandler: nil)
+                    }
+                    print("Wix account created and authenticated for \(email)")
+                }
+            } catch {
+                print("Error parsing account creation response: \(error)")
             }
         }.resume()
     }
