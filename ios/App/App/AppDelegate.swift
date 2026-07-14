@@ -185,9 +185,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKNavigationDelegate, ASA
         }
 
         // Intercept game URLs and load from GitHub (not Wix) so they see ORIJINZ_IAP_ACTIVE
+        // But don't re-intercept if wrapper already tried (has fromWrapper=1 parameter)
         let gameIds = ["odwordsandphrases", "od70s-songs", "odcovers", "odmovies", "odslogans", "odquotes", "odbooks"]
         let isGameURL = gameIds.contains { url.path.contains($0) }
-        if isGameURL, let host = url.host, (host.contains("orijinz") || host.contains("entspire")) {
+        let hasFromWrapperParam = url.query?.contains("fromWrapper=1") ?? false
+        if isGameURL && !hasFromWrapperParam, let host = url.host, (host.contains("orijinz") || host.contains("entspire")) {
             var gameId = "odwordsandphrases"
             for id in gameIds {
                 if url.path.contains(id) {
