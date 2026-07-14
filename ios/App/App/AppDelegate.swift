@@ -13,7 +13,7 @@ private let kProductMonthly = "com.convertify.entspire2.allgames.monthly"
 private let kProductAnnual  = "com.convertify.entspire2.allgames.annual"
 
 @UIApplicationMain
-class AppDelegate: UIResponder, UIApplicationDelegate, WKNavigationDelegate, ASAuthorizationControllerDelegate, ASAuthorizationControllerPresentationContextProvider {
+class AppDelegate: UIResponder, UIApplicationDelegate, WKNavigationDelegate, ASAuthorizationControllerDelegate {
 
     var window: UIWindow?
     private var webView: WKWebView!
@@ -290,7 +290,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKNavigationDelegate, ASA
         js("window.orijinzAppleSignInError&&window.orijinzAppleSignInError('\(msg)')")
     }
 
-    func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
+    @objc func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
         return window ?? UIWindow()
     }
 }
