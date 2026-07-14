@@ -51,18 +51,22 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKNavigationDelegate, ASA
         let userScript = WKUserScript(source: injectionScript, injectionTime: .atDocumentStart, forMainFrameOnly: false)
         config.userContentController.addUserScript(userScript)
 
-        // Inject sessionToken handler so Wix pages can authenticate
-        let sessionTokenScript = """
+        // Inject subscription and sessionToken handlers
+        let iosAuthScript = """
         (function() {
-            // Extract sessionToken from URL
+            // Extract iOS subscription status from URL
             var params = new URLSearchParams(window.location.search);
+
+            // Set iOS subscription flag if passed from wrapper
+            if (params.get('iapActive') === 'true') {
+                window.isSubscribedViaIOS = true;
+                console.log('iOS subscription detected via URL parameter');
+            }
+
+            // Handle sessionToken for Wix authentication
             var sessionToken = params.get('sessionToken');
-
             if (sessionToken) {
-                // Store in sessionStorage for Wix to find
                 try { sessionStorage.setItem('wixSessionToken', sessionToken); } catch(e) {}
-
-                // If page has Wix auth APIs available, authenticate now
                 if (window.wixFreemium && window.wixFreemium.authentication) {
                     try {
                         window.wixFreemium.authentication.applySessionToken(sessionToken);
@@ -71,8 +75,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKNavigationDelegate, ASA
             }
         })();
         """
-        let sessionTokenUserScript = WKUserScript(source: sessionTokenScript, injectionTime: .atDocumentStart, forMainFrameOnly: false)
-        config.userContentController.addUserScript(sessionTokenUserScript)
+        let iosAuthUserScript = WKUserScript(source: iosAuthScript, injectionTime: .atDocumentStart, forMainFrameOnly: false)
+        config.userContentController.addUserScript(iosAuthUserScript)
 
         webView = WKWebView(frame: .zero, configuration: config)
         webView.customUserAgent = mobileUA
