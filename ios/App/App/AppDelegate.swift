@@ -1,4 +1,4 @@
-// LAST UPDATED: 2026-07-14
+// LAST UPDATED: 2026-07-14 (Build 38)
 import UIKit
 import WebKit
 import StoreKit
@@ -45,6 +45,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKNavigationDelegate, ASA
         if #available(iOS 13.0, *) {
             config.websiteDataStore = WKWebsiteDataStore.default()
         }
+
+        // Inject native flag before page loads so JS sees it immediately
+        let injectionScript = "window.ORIJINZ_NATIVE_IOS=true;"
+        let userScript = WKUserScript(source: injectionScript, injectionTime: .atDocumentStart, forMainFrameOnly: false)
+        config.userContentController.addUserScript(userScript)
 
         webView = WKWebView(frame: .zero, configuration: config)
         webView.customUserAgent = mobileUA
@@ -145,6 +150,16 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKNavigationDelegate, ASA
         }
     }
 
+    private func jsWithLog(_ script: String) {
+        DispatchQueue.main.async { [weak self] in
+            self?.webView.evaluateJavaScript(script) { result, error in
+                if let error = error {
+                    print("❌ JS Error: \(error.localizedDescription)")
+                }
+            }
+        }
+    }
+
     // MARK: - WKNavigationDelegate
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
@@ -152,6 +167,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKNavigationDelegate, ASA
         let active = iapActive ? "true" : "false"
         let emailStr = userEmail.map { "'\($0)'" } ?? "null"
         let nameStr = userName.map { "'\($0)'" } ?? "null"
+        print("📄 Page loaded: \(webView.url?.absoluteString ?? "unknown")")
         js("window.ORIJINZ_NATIVE_IOS=true;window.ORIJINZ_IAP_ACTIVE=\(active);window.ORIJINZ_USER_EMAIL=\(emailStr);window.ORIJINZ_USER_NAME=\(nameStr);window.postMessage({type:'nativeIOSReady',iapActive:\(active),email:\(emailStr),name:\(nameStr)},'*');")
     }
 
@@ -168,7 +184,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKNavigationDelegate, ASA
                  decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
         guard let url = navigationAction.request.url else { decisionHandler(.allow); return }
 
+        print("🔗 Navigation: \(url.absoluteString)")
+
         if url.scheme == "orijinz" {
+            print("✅ Intercepted orijinz:// scheme: \(url.absoluteString)")
             handleScheme(url)
             decisionHandler(.cancel)
             return
@@ -267,7 +286,13 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKNavigationDelegate, ASA
     func applicationWillTerminate(_ application: UIApplication) {}
 
     func application(_ app: UIApplication, open url: URL,
-                     options: [UIApplication.OpenURLOptionsKey: Any] = [:]) -> Bool { true }
+                     options: [UIApplication.OpenURLOptionsKey: Any] = [:]) -> Bool {
+        if url.scheme == "orijinz" {
+            handleScheme(url)
+            return true
+        }
+        return false
+    }
     func application(_ application: UIApplication,
                      continue userActivity: NSUserActivity,
                      restorationHandler: @escaping ([UIUserActivityRestoring]?) -> Void) -> Bool { true }
