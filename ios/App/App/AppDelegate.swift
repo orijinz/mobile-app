@@ -103,7 +103,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKNavigationDelegate, ASA
                         await tx.finish()
                         iapActive = true
                         js("window.orijinzIAPSuccess&&window.orijinzIAPSuccess()")
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 3.5) { [weak self] in
                             self?.startAppleSignIn()
                         }
                     } else {
