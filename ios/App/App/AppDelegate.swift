@@ -174,17 +174,18 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKNavigationDelegate, ASA
             return
         }
 
-        // Block redirects to subscribe if coming from a game page (user is subscribed but game page tries to check)
+        // Intercept subscribe requests and load iOS-specific page
+        // But block redirect if user is subscribed (game page shouldn't redirect subscribed users)
         if (url.path.contains("/subscribe") || url.path == "/subscribe"),
            let host = url.host,
-           (host.contains("entspire")) {
-            // If subscribed, block this redirect (game page shouldn't redirect subscribed users)
+           (host.contains("orijinz") || host.contains("entspire")) {
             if iapActive {
+                // Subscribed user—block this redirect
                 js("window.history.back()")
                 decisionHandler(.cancel)
                 return
             }
-            // Otherwise, show subscribe page
+            // Not subscribed—show iOS subscribe page
             let iosSubscribeURL = URL(string: "https://orijinz.github.io/website/orijinz-subscribe-ios.html")!
             webView.load(URLRequest(url: iosSubscribeURL))
             decisionHandler(.cancel)
