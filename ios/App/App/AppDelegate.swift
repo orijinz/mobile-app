@@ -1,7 +1,8 @@
-// LAST UPDATED: 2026-07-13 10:53
+// LAST UPDATED: 2026-07-13
 import UIKit
 import WebKit
 import StoreKit
+import AuthenticationServices
 
 // ─── Product IDs ──────────────────────────────────────────────────────────────
 // Create these in App Store Connect > your app > Monetization > Subscriptions
@@ -12,12 +13,15 @@ private let kProductMonthly = "com.convertify.entspire2.allgames.monthly"
 private let kProductAnnual  = "com.convertify.entspire2.allgames.annual"
 
 @UIApplicationMain
-class AppDelegate: UIResponder, UIApplicationDelegate, WKNavigationDelegate {
+class AppDelegate: UIResponder, UIApplicationDelegate, WKNavigationDelegate, ASAuthorizationControllerDelegate, ASAuthorizationControllerPresentationContextProvider {
 
     var window: UIWindow?
     private var webView: WKWebView!
     private var reloadAttempts = 0
     private var iapActive = false
+    private var rootViewController: UIViewController?
+    private var userEmail: String?
+    private var userName: String?
 
     private let siteURL  = URL(string: "https://www.orijinz.com")!
     private let mobileUA = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1 OrijinzApp/1.0"
@@ -58,6 +62,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKNavigationDelegate {
             webView.trailingAnchor.constraint(equalTo: vc.view.trailingAnchor),
         ])
 
+        rootViewController = vc
         window = UIWindow(frame: UIScreen.main.bounds)
         window?.rootViewController = vc
         window?.makeKeyAndVisible()
@@ -98,6 +103,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKNavigationDelegate {
                         await tx.finish()
                         iapActive = true
                         js("window.orijinzIAPSuccess&&window.orijinzIAPSuccess()")
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
+                            self?.startAppleSignIn()
+                        }
                     } else {
                         js("window.orijinzIAPError&&window.orijinzIAPError('Verification failed')")
                     }
@@ -142,7 +150,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKNavigationDelegate {
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         reloadAttempts = 0
         let active = iapActive ? "true" : "false"
-        js("window.ORIJINZ_NATIVE_IOS=true;window.ORIJINZ_IAP_ACTIVE=\(active);window.postMessage({type:'nativeIOSReady',iapActive:\(active)},'*');")
+        let emailStr = userEmail.map { "'\($0)'" } ?? "null"
+        let nameStr = userName.map { "'\($0)'" } ?? "null"
+        js("window.ORIJINZ_NATIVE_IOS=true;window.ORIJINZ_IAP_ACTIVE=\(active);window.ORIJINZ_USER_EMAIL=\(emailStr);window.ORIJINZ_USER_NAME=\(nameStr);window.postMessage({type:'nativeIOSReady',iapActive:\(active),email:\(emailStr),name:\(nameStr)},'*');")
     }
 
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
@@ -234,4 +244,36 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKNavigationDelegate {
     func application(_ application: UIApplication,
                      continue userActivity: NSUserActivity,
                      restorationHandler: @escaping ([UIUserActivityRestoring]?) -> Void) -> Bool { true }
+
+    // MARK: - Apple Sign-In
+
+    private func startAppleSignIn() {
+        let request = ASAuthorizationAppleIDProvider().createRequest()
+        request.requestedScopes = [.fullName, .email]
+        let controller = ASAuthorizationController(authorizationRequests: [request])
+        controller.delegate = self
+        controller.presentationContextProvider = self
+        controller.performRequests()
+    }
+
+    func authorizationController(controller: ASAuthorizationController, didCompleteWithAuthorization authorization: ASAuthorization) {
+        guard let appleIDCredential = authorization.credential as? ASAuthorizationAppleIDCredential else { return }
+        let email = appleIDCredential.email ?? "user@orijinz.app"
+        let fullName = appleIDCredential.fullName
+        let givenName = fullName?.givenName ?? "User"
+        userEmail = email
+        userName = givenName
+        DispatchQueue.main.async { [weak self] in
+            self?.js("window.orijinzAppleSignInSuccess&&window.orijinzAppleSignInSuccess({email:'\(email)',name:'\(givenName)'})")
+        }
+    }
+
+    func authorizationController(controller: ASAuthorizationController, didCompleteWithError error: Error) {
+        let msg = (error as NSError).localizedDescription.replacingOccurrences(of: "\"", with: "'")
+        js("window.orijinzAppleSignInError&&window.orijinzAppleSignInError('\(msg)')")
+    }
+
+    func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
+        return window ?? UIWindow()
+    }
 }
