@@ -202,7 +202,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKNavigationDelegate, ASA
                     break
                 }
             }
-            let iosGameURL = URL(string: "https://orijinz.github.io/website/orijinz-game-ios.html?game=\(gameId)")!
+            let active = iapActive ? "true" : "false"
+            let iosGameURL = URL(string: "https://orijinz.github.io/website/orijinz-game-ios.html?game=\(gameId)&iapActive=\(active)")!
             webView.load(URLRequest(url: iosGameURL))
             decisionHandler(.cancel)
             return
