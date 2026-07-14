@@ -174,22 +174,29 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKNavigationDelegate, ASA
             return
         }
 
-        // Intercept subscribe requests and load iOS-specific page
+        // Block redirects to subscribe if coming from a game page (user is subscribed but game page tries to check)
         if (url.path.contains("/subscribe") || url.path == "/subscribe"),
            let host = url.host,
-           (host.contains("orijinz") || host.contains("entspire")) {
+           (host.contains("entspire")) {
+            // If subscribed, block this redirect (game page shouldn't redirect subscribed users)
+            if iapActive {
+                js("window.history.back()")
+                decisionHandler(.cancel)
+                return
+            }
+            // Otherwise, show subscribe page
             let iosSubscribeURL = URL(string: "https://orijinz.github.io/website/orijinz-subscribe-ios.html")!
             webView.load(URLRequest(url: iosSubscribeURL))
             decisionHandler(.cancel)
             return
         }
 
-        // Intercept game URLs and load from GitHub (not Wix) so they see ORIJINZ_IAP_ACTIVE
+        // Intercept game URLs and load from GitHub wrapper (injects flag before navigating)
         // But don't re-intercept if wrapper already tried (has fromWrapper=1 parameter)
         let gameIds = ["odwordsandphrases", "od70s-songs", "odcovers", "odmovies", "odslogans", "odquotes", "odbooks"]
         let isGameURL = gameIds.contains { url.path.contains($0) }
         let hasFromWrapperParam = url.query?.contains("fromWrapper=1") ?? false
-        if isGameURL && !hasFromWrapperParam, let host = url.host, (host.contains("orijinz") || host.contains("entspire")) {
+        if isGameURL && !hasFromWrapperParam, let host = url.host, (host.contains("entspire")) {
             var gameId = "odwordsandphrases"
             for id in gameIds {
                 if url.path.contains(id) {
