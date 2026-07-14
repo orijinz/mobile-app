@@ -1,4 +1,4 @@
-// LAST UPDATED: 2026-07-14
+// LAST UPDATED: 2026-07-15
 import UIKit
 import WebKit
 import StoreKit
@@ -50,6 +50,29 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKNavigationDelegate, ASA
         let injectionScript = "window.ORIJINZ_NATIVE_IOS=true;"
         let userScript = WKUserScript(source: injectionScript, injectionTime: .atDocumentStart, forMainFrameOnly: false)
         config.userContentController.addUserScript(userScript)
+
+        // Inject sessionToken handler so Wix pages can authenticate
+        let sessionTokenScript = """
+        (function() {
+            // Extract sessionToken from URL
+            var params = new URLSearchParams(window.location.search);
+            var sessionToken = params.get('sessionToken');
+
+            if (sessionToken) {
+                // Store in sessionStorage for Wix to find
+                try { sessionStorage.setItem('wixSessionToken', sessionToken); } catch(e) {}
+
+                // If page has Wix auth APIs available, authenticate now
+                if (window.wixFreemium && window.wixFreemium.authentication) {
+                    try {
+                        window.wixFreemium.authentication.applySessionToken(sessionToken);
+                    } catch(e) { console.log('applySessionToken not available yet'); }
+                }
+            }
+        })();
+        """
+        let sessionTokenUserScript = WKUserScript(source: sessionTokenScript, injectionTime: .atDocumentStart, forMainFrameOnly: false)
+        config.userContentController.addUserScript(sessionTokenUserScript)
 
         webView = WKWebView(frame: .zero, configuration: config)
         webView.customUserAgent = mobileUA
