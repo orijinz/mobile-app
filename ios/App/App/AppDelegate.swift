@@ -1,4 +1,4 @@
-// LAST UPDATED: 2026-07-14 (Build 40)
+// LAST UPDATED: 2026-07-14
 import UIKit
 import WebKit
 import StoreKit
@@ -46,7 +46,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKNavigationDelegate, ASA
             config.websiteDataStore = WKWebsiteDataStore.default()
         }
 
-        // Inject native flag before page loads so JS sees it immediately
+        // Inject native flag before page loads so JS sees it immediately (fixes race condition)
         let injectionScript = "window.ORIJINZ_NATIVE_IOS=true;"
         let userScript = WKUserScript(source: injectionScript, injectionTime: .atDocumentStart, forMainFrameOnly: false)
         config.userContentController.addUserScript(userScript)
@@ -150,16 +150,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKNavigationDelegate, ASA
         }
     }
 
-    private func jsWithLog(_ script: String) {
-        DispatchQueue.main.async { [weak self] in
-            self?.webView.evaluateJavaScript(script) { result, error in
-                if let error = error {
-                    print("❌ JS Error: \(error.localizedDescription)")
-                }
-            }
-        }
-    }
-
     // MARK: - WKNavigationDelegate
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
@@ -167,7 +157,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKNavigationDelegate, ASA
         let active = iapActive ? "true" : "false"
         let emailStr = userEmail.map { "'\($0)'" } ?? "null"
         let nameStr = userName.map { "'\($0)'" } ?? "null"
-        print("📄 Page loaded: \(webView.url?.absoluteString ?? "unknown")")
         js("window.ORIJINZ_NATIVE_IOS=true;window.ORIJINZ_IAP_ACTIVE=\(active);window.ORIJINZ_USER_EMAIL=\(emailStr);window.ORIJINZ_USER_NAME=\(nameStr);window.postMessage({type:'nativeIOSReady',iapActive:\(active),email:\(emailStr),name:\(nameStr)},'*');")
     }
 
@@ -184,39 +173,28 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKNavigationDelegate, ASA
                  decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
         guard let url = navigationAction.request.url else { decisionHandler(.allow); return }
 
-        print("🔗 Navigation: \(url.absoluteString)")
-
         if url.scheme == "orijinz" {
-            print("✅ Intercepted orijinz:// scheme: \(url.absoluteString)")
             handleScheme(url)
             decisionHandler(.cancel)
             return
         }
 
         // Intercept subscribe requests and load iOS-specific page
-        // But block redirect if user is subscribed (game page shouldn't redirect subscribed users)
         if (url.path.contains("/subscribe") || url.path == "/subscribe"),
            let host = url.host,
            (host.contains("orijinz") || host.contains("entspire")) {
-            if iapActive {
-                // Subscribed user—block this redirect
-                js("window.history.back()")
-                decisionHandler(.cancel)
-                return
-            }
-            // Not subscribed—show iOS subscribe page
             let iosSubscribeURL = URL(string: "https://orijinz.github.io/website/orijinz-subscribe-ios.html")!
             webView.load(URLRequest(url: iosSubscribeURL))
             decisionHandler(.cancel)
             return
         }
 
-        // Intercept game URLs and load from GitHub wrapper (injects flag before navigating)
+        // Intercept game URLs and load from GitHub (not Wix) so they see ORIJINZ_IAP_ACTIVE
         // But don't re-intercept if wrapper already tried (has fromWrapper=1 parameter)
         let gameIds = ["odwordsandphrases", "od70s-songs", "odcovers", "odmovies", "odslogans", "odquotes", "odbooks"]
         let isGameURL = gameIds.contains { url.path.contains($0) }
         let hasFromWrapperParam = url.query?.contains("fromWrapper=1") ?? false
-        if isGameURL && !hasFromWrapperParam, let host = url.host, (host.contains("entspire")) {
+        if isGameURL && !hasFromWrapperParam, let host = url.host, (host.contains("orijinz") || host.contains("entspire")) {
             var gameId = "odwordsandphrases"
             for id in gameIds {
                 if url.path.contains(id) {
@@ -286,13 +264,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKNavigationDelegate, ASA
     func applicationWillTerminate(_ application: UIApplication) {}
 
     func application(_ app: UIApplication, open url: URL,
-                     options: [UIApplication.OpenURLOptionsKey: Any] = [:]) -> Bool {
-        if url.scheme == "orijinz" {
-            handleScheme(url)
-            return true
-        }
-        return false
-    }
+                     options: [UIApplication.OpenURLOptionsKey: Any] = [:]) -> Bool { true }
     func application(_ application: UIApplication,
                      continue userActivity: NSUserActivity,
                      restorationHandler: @escaping ([UIUserActivityRestoring]?) -> Void) -> Bool { true }
