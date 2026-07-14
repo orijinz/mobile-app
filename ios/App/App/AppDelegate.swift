@@ -265,7 +265,24 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKNavigationDelegate, ASA
         userName = givenName
         DispatchQueue.main.async { [weak self] in
             self?.js("window.orijinzAppleSignInSuccess&&window.orijinzAppleSignInSuccess({email:'\(email)',name:'\(givenName)'})")
+            self?.createWixAccount(email: email, name: givenName)
         }
+    }
+
+    private func createWixAccount(email: String, name: String) {
+        let url = URL(string: "https://www.entspire.com/_functions/createIosAccount")!
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        let body: [String: String] = ["email": email, "name": name]
+        request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+        URLSession.shared.dataTask(with: request) { _, response, error in
+            if let error = error {
+                print("Account creation error: \(error.localizedDescription)")
+            } else {
+                print("Account created successfully for \(email)")
+            }
+        }.resume()
     }
 
     func authorizationController(controller: ASAuthorizationController, didCompleteWithError error: Error) {
