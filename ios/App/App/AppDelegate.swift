@@ -1,4 +1,4 @@
-// LAST UPDATED: 2026-07-13
+// LAST UPDATED: 2026-07-14
 import UIKit
 import WebKit
 import StoreKit
@@ -180,6 +180,23 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKNavigationDelegate, ASA
            (host.contains("orijinz") || host.contains("entspire")) {
             let iosSubscribeURL = URL(string: "https://orijinz.github.io/website/orijinz-subscribe-ios.html")!
             webView.load(URLRequest(url: iosSubscribeURL))
+            decisionHandler(.cancel)
+            return
+        }
+
+        // Intercept game URLs and load from GitHub (not Wix) so they see ORIJINZ_IAP_ACTIVE
+        let gameIds = ["odwordsandphrases", "od70s-songs", "odcovers", "odmovies", "odslogans", "odquotes", "odbooks"]
+        let isGameURL = gameIds.contains { url.path.contains($0) }
+        if isGameURL, let host = url.host, (host.contains("orijinz") || host.contains("entspire")) {
+            var gameId = "odwordsandphrases"
+            for id in gameIds {
+                if url.path.contains(id) {
+                    gameId = id
+                    break
+                }
+            }
+            let iosGameURL = URL(string: "https://orijinz.github.io/website/orijinz-game-ios.html?game=\(gameId)")!
+            webView.load(URLRequest(url: iosGameURL))
             decisionHandler(.cancel)
             return
         }
