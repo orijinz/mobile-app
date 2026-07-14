@@ -252,7 +252,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKNavigationDelegate, ASA
         request.requestedScopes = [.fullName, .email]
         let controller = ASAuthorizationController(authorizationRequests: [request])
         controller.delegate = self
-        controller.presentationContextProvider = self
         controller.performRequests()
     }
 
@@ -290,7 +289,4 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKNavigationDelegate, ASA
         js("window.orijinzAppleSignInError&&window.orijinzAppleSignInError('\(msg)')")
     }
 
-    @objc func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
-        return window ?? UIWindow()
-    }
 }
