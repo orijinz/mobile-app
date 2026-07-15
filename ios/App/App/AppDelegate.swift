@@ -1,4 +1,4 @@
-// LAST UPDATED: 2026-07-15
+// LAST UPDATED: 2026-07-14
 import UIKit
 import WebKit
 import StoreKit
@@ -13,7 +13,7 @@ private let kProductMonthly = "com.convertify.entspire2.allgames.monthly"
 private let kProductAnnual  = "com.convertify.entspire2.allgames.annual"
 
 @UIApplicationMain
-class AppDelegate: UIResponder, UIApplicationDelegate, WKNavigationDelegate, ASAuthorizationControllerDelegate {
+class AppDelegate: UIResponder, UIApplicationDelegate, WKNavigationDelegate, WKScriptMessageHandler, ASAuthorizationControllerDelegate {
 
     var window: UIWindow?
     private var webView: WKWebView!
@@ -77,6 +77,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKNavigationDelegate, ASA
         """
         let iosAuthUserScript = WKUserScript(source: iosAuthScript, injectionTime: .atDocumentStart, forMainFrameOnly: false)
         config.userContentController.addUserScript(iosAuthUserScript)
+
+        // Register message handler for subscription status checks from game pages
+        config.userContentController.add(self, name: "subscriptionCheck")
 
         webView = WKWebView(frame: .zero, configuration: config)
         webView.customUserAgent = mobileUA
@@ -264,6 +267,20 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKNavigationDelegate, ASA
         case "restore":   restorePurchases()
         default:          break
         }
+    }
+
+    // MARK: - WKScriptMessageHandler (subscription status for game pages)
+
+    func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+        guard message.name == "subscriptionCheck" else { return }
+
+        let isSubscribed = iapActive
+        let script = """
+        window.dispatchEvent(new CustomEvent('subscriptionCheckResponse', {
+            detail: { isSubscribed: \(isSubscribed) }
+        }));
+        """
+        webView.evaluateJavaScript(script, completionHandler: nil)
     }
 
     // MARK: - Stall watchdog
