@@ -275,7 +275,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKNavigationDelegate, WKS
         guard message.name == "subscriptionCheck" else { return }
 
         let isSubscribed = iapActive
+        print("🎮 [subscriptionCheck] Received message. iapActive=\(isSubscribed)")
+
         let script = """
+        console.log('🎮 [subscriptionCheck] Got response from native: iapActive=\(isSubscribed)');
         window.dispatchEvent(new CustomEvent('subscriptionCheckResponse', {
             detail: { isSubscribed: \(isSubscribed) }
         }));
